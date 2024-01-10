@@ -1,10 +1,14 @@
 import streamlit as st
 from millify import millify
+import plotly.express as px
 
 from shared.snowflake import Snowflake
 from queries import analisis_importaciones
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide",
+                   page_title='Finkargo Analiza',
+                   page_icon='logo.png',
+                   menu_items={'About': '# Finkargo Analiza'})
 
 
 @st.cache_data
@@ -89,7 +93,7 @@ datos_visualizar = datos[(datos['PROVEEDOR'].isin(supplier_select)) &
                          (datos['PAIS_PROCEDENCIA'].isin(country_pro_select))]
 
 # FILA 2
-f2c1, f2c2, f2c3, f2c4, f2c5 = st.columns((3, 1, 1, 1, 1))
+f2c1, f2c2, f2c3, f2c4, f2c5, f2c6 = st.columns((3, 1, 1, 1, 1, 1))
 
 with f2c1.container(border=True):
     st.write('Posicion arancelaria')
@@ -108,26 +112,28 @@ with f2c4.container(border=True):
     st.metric(label='**Peso neto (Kg)**', value=millify(weight_metric, precision=2))
 
 with f2c5.container(border=True):
-    partidas = datos_visualizar.shape[0]
+    partidas = len(datos_visualizar['PARTIDA'].unique())
     st.metric(label='**# Partidas**', value=partidas)
+
+with f2c6.container(border=True):
+    operations = datos_visualizar.shape[0]
+    st.metric(label='**Operaciones**', value=operations)
 
 
 # FILA 3
-f3c1, f3c2, f3c3 = st.columns((1, 3, 2))
-with f3c1.container():
-    with st.container(border=True):
-        categoria = st.radio(label='Seleccione una categoria',
-                             options=['Posición arancelaria',
-                                      'Importador',
-                                      'País de origen',
-                                      'Proveedor'
-                                      ],
-                             index=0)
+f3c1, f3c2 = st.columns((4, 2))
 
-    with st.container(border=True):
-        st.write('Operaciones')
+with f3c1.container(border=True):
+    st.write('#### Importaciones realizadas')
+    categoria = st.radio(label='Seleccione una categoria',
+                            options=['Posición arancelaria',
+                                    'Importador',
+                                    'País de origen',
+                                    'Proveedor'
+                                    ],
+                            index=0,
+                            horizontal=True)
 
-with f3c2.container(border=True):
     @st.cache_data
     def get_importaciones(datos, categoria):
         datos_resultado = datos[[f'{categoria}', 'FOB', 'CIF', 'TIPO_UNIDADES', 'UNIDADES']]\
@@ -149,47 +155,98 @@ with f3c2.container(border=True):
                                            'CIF_X_UNIDAD']]
         return datos_resultado
 
+    def plot_importaciones(datos):
+        st.dataframe(datos_tabla,
+                     hide_index=True,
+                     height=380,
+                     use_container_width=True,
+                     column_config={'PARTICIPACION': st.column_config.NumberColumn(format='%.2f %%'),
+                                    'FOB': st.column_config.NumberColumn(format='$ %.2f'),
+                                    'CIF': st.column_config.NumberColumn(format='$ %.2f'),
+                                    'FOB_X_UNIDAD': st.column_config.NumberColumn(format='$ %.2f'),
+                                    'CIF_X_UNIDAD': st.column_config.NumberColumn(format='$ %.2f')})
 
-    st.subheader('Importaciones realizadas')
     # VISUALIZACION DE DATAFRAME
     if categoria == 'Posición arancelaria':
         datos_tabla = get_importaciones(datos_visualizar, 'PARTIDA')
-        st.dataframe(datos_tabla, hide_index=True)
+        plot_importaciones(datos_tabla)
     elif categoria == 'Importador':
         datos_tabla = get_importaciones(datos_visualizar, 'IMPORTADOR')
-        st.dataframe(datos_tabla, hide_index=True)
+        plot_importaciones(datos_tabla)
     elif categoria == 'País de origen':
         datos_tabla = get_importaciones(datos_visualizar, 'PAIS_ORIGEN')
-        st.dataframe(datos_tabla, hide_index=True)
+        plot_importaciones(datos_tabla)
     elif categoria == 'Proveedor':
         datos_tabla = get_importaciones(datos_visualizar, 'PROVEEDOR')
-        st.dataframe(datos_tabla, hide_index=True)
+        plot_importaciones(datos_tabla)
 
-with f3c3.container(border=True):
-    st.subheader('Volumen de importaciones')
-    st.area_chart(datos_visualizar[['MES', 'FOB']].groupby(['MES']).sum().sort_values(['MES']))
+with f3c2.container(border=True):
+    st.write('#### Volumen de importaciones')
+    fig = px.line(datos_visualizar[['MES', 'FOB']].groupby(['MES']).sum().sort_values(['MES']),
+                  width = 400,
+                  height = 450,
+                  markers = True)
+    fig.update_layout(showlegend=False)
+    st.plotly_chart(fig)
 
 
 # FILA 4
 f4c1, f4c2, f4c3 = st.columns(3)
 
-def get_participacion(datos, categoria):
-    datos_resultado = datos[[f'{categoria}']].groupby([f'{categoria}']).agg({f'{categoria}': 'count'}).rename(columns={f'{categoria}':'REGISTROS'}).reset_index()
-    datos_resultado['PARTICIPACION'] = round(datos_resultado['REGISTROS']/datos.shape[0] * 100, 2)
-    return datos_resultado[[f'{categoria}', 'PARTICIPACION']].sort_values(['PARTICIPACION'], ascending=False)
+@st.cache_data
+def get_participacion(data, categoria):
+    datos_resultado = data[[f'{categoria}', 'FOB']]\
+                        .groupby([f'{categoria}'])\
+                        .sum()\
+                        .reset_index()\
+                        .sort_values(['FOB'], ascending=True)
+    total_fob = datos_resultado['FOB'].sum()
+    datos_resultado['PARTICIPACION'] = round(datos_resultado['FOB']/total_fob, 4)
+    datos_resultado[f'{categoria} '] = datos_resultado[f'{categoria}'].str[:15] + '...'
+    return datos_resultado
+
+def plot_participacion(data, categoria):
+    fig = px.bar(data,
+                 y = f'{categoria} ',
+                 x = 'PARTICIPACION',
+                 orientation = 'h',
+                 width = 400,
+                 height = 400,
+                 text_auto = '.2%',
+                 hover_data = [f'{categoria}', 'PARTICIPACION'])
+    return fig
 
 with f4c1.container(border=True):
     participacion_importador = get_participacion(datos_visualizar, 'IMPORTADOR')
-    st.write('% participación por importador')
-    st.dataframe(participacion_importador, hide_index=True)
+    st.write('#### % participación por importador')
+    num_impo_plot = st.slider('Importadores a visualizar',
+                              min_value=1,
+                              max_value=participacion_importador.shape[0],
+                              value=10,
+                              step=1)
+    fig = plot_participacion(participacion_importador.tail(num_impo_plot), 'IMPORTADOR')
+    st.plotly_chart(fig)
 
 
 with f4c2.container(border=True):
     participacion_proveedor = get_participacion(datos_visualizar, 'PROVEEDOR')
-    st.write('% participación por proveedor')
-    st.dataframe(participacion_proveedor, hide_index=True)
+    st.write('#### % participación por proveedor')
+    num_prov_plot = st.slider('Proveedores a visualizar',
+                              min_value=1,
+                              max_value=participacion_proveedor.shape[0],
+                              value=10,
+                              step=1)
+    fig = plot_participacion(participacion_proveedor.tail(num_prov_plot), 'PROVEEDOR')
+    st.plotly_chart(fig)
+
 
 with f4c3.container(border=True):
     participacion_pais = get_participacion(datos_visualizar, 'PAIS_PROCEDENCIA')
-    st.write('% participación por pais de procedencia')
-    st.dataframe(participacion_pais, hide_index=True)
+    st.write('#### % participación por pais de procedencia')
+    num_country_plot = st.slider('Países a visualizar',
+                                 min_value=1,
+                                 max_value=participacion_pais.shape[0],
+                                 value=10,
+                                 step=1)
+    fig = plot_participacion(participacion_pais.tail(num_country_plot), 'PAIS_PROCEDENCIA')
+    st.plotly_chart(fig)
