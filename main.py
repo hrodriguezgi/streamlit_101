@@ -8,7 +8,8 @@ from queries import analisis_importaciones
 st.set_page_config(layout="wide",
                    page_title='Finkargo Analiza',
                    page_icon='logo.png',
-                   menu_items={'About': '# Finkargo Analiza'})
+                   menu_items={'About': '''# Finkargo Analiza
+                                        Análisis de importaciones Colombianas'''})
 
 
 @st.cache_data
@@ -111,12 +112,29 @@ with f1c7.expander('Posición arancelaria'):
                                        options=tariff_list,
                                        label_visibility='hidden')
 
-datos_visualizar = datos[(datos['PROVEEDOR'].isin(supplier_select)) &
-                         (datos['IMPORTADOR'].isin(importer_select)) &
-                         (datos['PAIS_ORIGEN'].isin(country_src_select)) &
-                         (datos['PAIS_PROCEDENCIA'].isin(country_pro_select)) &
-                         (datos['PARTIDA'].isin(tariff_select)) &
-                         (datos['FECHA'] >= dates[0]) & (datos['FECHA'] <= dates[1])]
+@st.cache_data
+def filter_data(data,
+                supplier_select,
+                importer_select,
+                country_src_select,
+                country_pro_select,
+                tariff_select,
+                dates):
+    datos_visualizar = data[(data['PROVEEDOR'].isin(supplier_select)) &
+                            (data['IMPORTADOR'].isin(importer_select)) &
+                            (data['PAIS_ORIGEN'].isin(country_src_select)) &
+                            (data['PAIS_PROCEDENCIA'].isin(country_pro_select)) &
+                            (data['PARTIDA'].isin(tariff_select)) &
+                            (data['FECHA'] >= dates[0]) & (data['FECHA'] <= dates[1])]
+    return datos_visualizar
+
+datos_visualizar = filter_data(datos,
+                               supplier_select,
+                               importer_select,
+                               country_src_select,
+                               country_pro_select,
+                               tariff_select,
+                               dates)
 
 # FILA 2
 f2c1, f2c2, f2c3, f2c4, f2c5 = st.columns(5)
