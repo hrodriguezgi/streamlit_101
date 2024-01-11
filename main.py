@@ -35,87 +35,109 @@ country_pro_list.sort()
 start_date = datos['FECHA'].min()
 end_date = datos['FECHA'].max()
 
+tariff_list = list(datos['PARTIDA'].unique())
+tariff_list.sort()
 
 
 # FILA 1
-f1c1, f1c2, f1c3, f1c4, f1c5, f1c6 = st.columns((0.3,1,1,1,1,1))
+f1c1, f1c2, f1c3, f1c4, f1c5, f1c6, f1c7 = st.columns((0.3,1,1,1,1,1,1))
 
 f1c1.image('logo.png')
 
 with f1c2.expander('Proveedor'):
     all_supplier = st.checkbox('Todos los proveedores', value=True)
     if all_supplier:
-        supplier_select = st.multiselect(label='',
+        supplier_select = st.multiselect(label='Todos los proveedores',
                                          options=supplier_list,
-                                         default=supplier_list)
+                                         default=supplier_list,
+                                         label_visibility='hidden')
     else:
-        supplier_select = st.multiselect(label='',
-                                         options=supplier_list)
+        supplier_select = st.multiselect(label='Todos los proveedores',
+                                         options=supplier_list,
+                                         label_visibility='hidden')
 
 with f1c3.expander('Importador'):
     all_importer = st.checkbox('Todos los importadores', value=True)
     if all_importer:
-        importer_select = st.multiselect(label='',
+        importer_select = st.multiselect(label='Todos los importadores',
                                          options=importer_list,
-                                         default=importer_list)
+                                         default=importer_list,
+                                         label_visibility='hidden')
     else:
-        importer_select = st.multiselect(label='',
-                                         options=importer_list)
+        importer_select = st.multiselect(label='Todos los importadores',
+                                         options=importer_list,
+                                         label_visibility='hidden')
 
 with f1c4.expander('Pais de origen de mercancia'):
     all_src_country = st.checkbox('Todos los paises de origen', value=True)
     if all_src_country:
-        country_src_select = st.multiselect('Pais de origen de mercancia',
+        country_src_select = st.multiselect('Todos los paises de origen',
                                             options=country_src_list,
-                                            default=country_src_list)
+                                            default=country_src_list,
+                                            label_visibility='hidden')
     else:
-        country_src_select = st.multiselect('Pais de origen de mercancia',
-                                            options=country_src_list)
+        country_src_select = st.multiselect('Todos los paises de origen',
+                                            options=country_src_list,
+                                            label_visibility='hidden')
 
 with f1c5.expander('Pais de procedencia'):
     all_pro_country = st.checkbox('Todos los paises de procedencia', value=True)
     if all_pro_country:
-        country_pro_select = st.multiselect('Pais de origen',
+        country_pro_select = st.multiselect('Todos los paises de procedencia',
                                             options=country_pro_list,
-                                            default=country_pro_list)
+                                            default=country_pro_list,
+                                            label_visibility='hidden')
     else:
-        country_pro_select = st.multiselect('Pais de origen',
-                                            options=country_pro_list)
-        
+        country_pro_select = st.multiselect('Todos los paises de procedencia',
+                                            options=country_pro_list,
+                                            label_visibility='hidden')
+
 with f1c6.expander('Fecha de importacion'):
-    st.write('Fecha de importacion')
-    dates = st.date_input('Fecha importación')
-    st.write(f'{dates}')
+    dates = st.date_input('Fecha de importacion',
+                          (start_date, end_date),
+                          min_value=start_date,
+                          max_value=end_date,
+                          label_visibility='hidden')
+
+with f1c7.expander('Posición arancelaria'):
+    all_tariff = st.checkbox('Todas las posiciones arancelarias', value=True)
+    if all_tariff:
+        tariff_select = st.multiselect('Todas las posiciones arancelarias',
+                                       options=tariff_list,
+                                       default=tariff_list,
+                                       label_visibility='hidden')
+    else:
+        tariff_select = st.multiselect('Todas las posiciones arancelarias',
+                                       options=tariff_list,
+                                       label_visibility='hidden')
 
 datos_visualizar = datos[(datos['PROVEEDOR'].isin(supplier_select)) &
                          (datos['IMPORTADOR'].isin(importer_select)) &
                          (datos['PAIS_ORIGEN'].isin(country_src_select)) &
-                         (datos['PAIS_PROCEDENCIA'].isin(country_pro_select))]
+                         (datos['PAIS_PROCEDENCIA'].isin(country_pro_select)) &
+                         (datos['PARTIDA'].isin(tariff_select)) &
+                         (datos['FECHA'] >= dates[0]) & (datos['FECHA'] <= dates[1])]
 
 # FILA 2
-f2c1, f2c2, f2c3, f2c4, f2c5, f2c6 = st.columns((3, 1, 1, 1, 1, 1))
+f2c1, f2c2, f2c3, f2c4, f2c5 = st.columns(5)
 
 with f2c1.container(border=True):
-    st.write('Posicion arancelaria')
-
-
-with f2c2.container(border=True):
     fob_metric = round(datos_visualizar['FOB'].sum(), 2)
     st.metric(label='**FOB**', value=millify(fob_metric, precision=2))
 
-with f2c3.container(border=True):
+with f2c2.container(border=True):
     cif_metric = round(datos_visualizar['CIF'].sum(), 2)
     st.metric(label='**CIF**', value=millify(cif_metric, precision=2))
 
-with f2c4.container(border=True):
+with f2c3.container(border=True):
     weight_metric = round(datos_visualizar['PESO_NETO'].sum(), 2)
     st.metric(label='**Peso neto (Kg)**', value=millify(weight_metric, precision=2))
 
-with f2c5.container(border=True):
+with f2c4.container(border=True):
     partidas = len(datos_visualizar['PARTIDA'].unique())
     st.metric(label='**# Partidas**', value=partidas)
 
-with f2c6.container(border=True):
+with f2c5.container(border=True):
     operations = datos_visualizar.shape[0]
     st.metric(label='**Operaciones**', value=operations)
 
