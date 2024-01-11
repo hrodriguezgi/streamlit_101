@@ -204,7 +204,7 @@ with f3c1.container(border=True):
 
 with f3c2.container(border=True):
     st.write('#### Volumen de importaciones')
-    fig = px.line(datos_visualizar[['MES', 'FOB']].groupby(['MES']).sum().sort_values(['MES']),
+    fig = px.area(datos_visualizar[['MES', 'FOB']].groupby(['MES']).sum().sort_values(['MES']),
                   width = 400,
                   height = 450,
                   markers = True)
