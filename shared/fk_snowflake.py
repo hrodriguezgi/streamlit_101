@@ -10,7 +10,7 @@ class MySnowpark:
             'account': os.environ['SNOWFLAKE_ACCOUNT'],
             'role': os.environ['SNOWFLAKE_ROLE'],
             'warehouse': os.environ['SNOWFLAKE_WAREHOUSE'],
-            'database': os.environ['SNOWFLAKE_DATABASE'],,
+            'database': os.environ['SNOWFLAKE_DATABASE'],
             'schema': os.environ['SNOWFLAKE_SCHEMA'],}
         self.session = Session.builder.configs(self.connection_parameters).create()
 
