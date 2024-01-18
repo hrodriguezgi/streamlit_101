@@ -10,8 +10,9 @@ class MySnowpark:
             'account': os.environ['SNOWFLAKE_ACCOUNT'],
             'role': os.environ['SNOWFLAKE_ROLE'],
             'warehouse': os.environ['SNOWFLAKE_WAREHOUSE'],
-            'database': os.environ['SNOWFLAKE_DATABASE'],
-            'schema': os.environ['SNOWFLAKE_SCHEMA'],}
+            'database': 'FKPDN_DWH',
+            'schema': 'ANALIZA',
+            }
         self.session = Session.builder.configs(self.connection_parameters).create()
 
     def get_filter_values(self, column_name):
